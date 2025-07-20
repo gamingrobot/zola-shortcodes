@@ -1,11 +1,10 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
+	"id": "zola-shortcodes",
+	"name": "Zola Shortcodes",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"description": "Renders zola shortcodes",
+	"author": "gamingrobot",
+	"authorUrl": "https://creekmore.dev",
 	"isDesktopOnly": false
 }
