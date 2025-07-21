@@ -5,11 +5,11 @@ This plugin makes zola shortcodes render in Live Preview, switch to Source Mode 
 
 ## Tags
 - Renders `{{ img(src="name", ...) }}` as `<img src="name">`
-- Renders `{{ video(src="name", ...) }}` as `<video src="name">` (doesn't have controls)
+- Renders `{{ video(src="name", ...) }}` as `<video controls preload="metadata" src="name">`
 
 ## Callouts 
 ```
-{% info() %}
+{% callout(t="info") %}
 Callout Text
 {% end %} 
 ```

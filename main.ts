@@ -1,4 +1,4 @@
-import { Plugin, editorLivePreviewField, editorInfoField } from 'obsidian';
+import { Plugin, MarkdownRenderer, Component, editorLivePreviewField, editorInfoField } from 'obsidian';
 import {
 	Extension,
 	RangeSetBuilder,
@@ -30,6 +30,10 @@ class TagWidget extends WidgetType {
 		const element = document.createElement(this.tag);
 		element.setAttr('src', this.src)
 		element.setAttr('data-path', this.filePath);
+		if(this.tag == "video"){
+			element.setAttr('controls', "");
+			element.setAttr('preload', "metadata");
+		}
 		return element;
 	}
 	ignoreEvent(event: Event): boolean {
@@ -39,8 +43,8 @@ class TagWidget extends WidgetType {
 
 class CalloutWidget extends WidgetType {
 	readonly type: string;
-	readonly text: string;
-	constructor(type: string, text: string) {
+	readonly text: HTMLElement;
+	constructor(type: string, text: HTMLElement) {
 		super();
 		this.type = type;
 		this.text = text;
@@ -52,20 +56,17 @@ class CalloutWidget extends WidgetType {
 		const callout = document.createElement('div');
 		callout.setAttr('class', 'callout')
 		callout.setAttr('data-callout', this.type);
-		const calloutTitle = callout.createEl('div');
-		calloutTitle.setAttr('class', 'callout-title')
-		const calloutTitleInner = calloutTitle.createEl('div');
-		calloutTitleInner.setAttr('class', 'callout-title-inner')
-		calloutTitleInner.innerHTML = this.type
-		const content = callout.createEl('div');
-		content.setAttr('class', 'callout-content');
-		content.innerHTML = this.text;
+		this.text.setAttr('class', 'callout-content');
+		callout.appendChild(this.text)
 		return callout;
+	}
+	ignoreEvent(event: Event): boolean {
+		return false;
 	}
 }
 
 const tagRegex = /{{\s*(img|video)\(src="([\/\.\w-]+)".*}}/g;
-const calloutStartRegex = /^{%\s*callout\(type="(info|tip|warn|danger)"\)\s*%}$/g
+const calloutStartRegex = /^{%\s*callout\(t="(info|tip|warning|danger)"\)\s*%}$/g
 const calloutEndRegex = /^{%\s*end\s*%}$/g
 
 function createStateField(plugin: ShortCodePlugin): StateField<DecorationSet> {
@@ -86,6 +87,8 @@ function createStateField(plugin: ShortCodePlugin): StateField<DecorationSet> {
 				let calloutText = "";
 				let calloutFrom = 0;
 				for (let cursor = doc.iterRange(from, to), pos = from, m; !cursor.next().done; pos += cursor.value.length) {
+					// console.log(pos);
+					// console.log(cursor.value);
 					if (!cursor.lineBreak) {
 						if(cursor.value[0] != '{') { //not a shortcode line
 							if(insideCallout)
@@ -94,7 +97,6 @@ function createStateField(plugin: ShortCodePlugin): StateField<DecorationSet> {
 							}
 							continue;
 						}
-						//console.log(cursor.value);
 						//tag
 						while(m = tagRegex.exec(cursor.value)){
 							const tag = m[1];
@@ -116,7 +118,15 @@ function createStateField(plugin: ShortCodePlugin): StateField<DecorationSet> {
 						//callout end
 						while(m = calloutEndRegex.exec(cursor.value)){
 							if(insideCallout){
-								builder.add(calloutFrom, pos + m.index + m[0].length, Decoration.replace({ widget: new CalloutWidget(calloutType, calloutText) }))
+								var content = document.createElement('div')
+								MarkdownRenderer.render(
+									this.app,
+									calloutText,
+									content,
+									editorInfo.file?.path ?? "",
+									new Component(),
+								);
+								builder.add(calloutFrom, pos + m.index + m[0].length, Decoration.replace({ widget: new CalloutWidget(calloutType, content), block: true}))
 								insideCallout = false;
 								calloutType = "";
 								calloutText = "";
