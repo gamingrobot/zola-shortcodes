@@ -66,8 +66,7 @@ class CalloutWidget extends WidgetType {
 }
 
 const tagRegex = /{{\s*(img|video)\(src="([\/\.\w-]+)".*}}/g;
-const calloutStartRegex = /^{%\s*callout\(t="(info|tip|warning|danger)"\)\s*%}$/g
-const calloutEndRegex = /^{%\s*end\s*%}$/g
+const calloutRegex = /^{%\s*(info|tip|warning|danger)\(\)\s*%}(.*){%\s*end\s*%}$/g
 
 function createStateField(plugin: ShortCodePlugin): StateField<DecorationSet> {
 	return StateField.define<DecorationSet>({
@@ -79,58 +78,51 @@ function createStateField(plugin: ShortCodePlugin): StateField<DecorationSet> {
 			const livePreview = transaction.state.field(editorLivePreviewField)
 			if (livePreview) {
 				const editorInfo = transaction.state.field(editorInfoField);
+				const selection = transaction.state.selection.main;
 				const doc = transaction.state.doc;
 				const from = 0;
 				const to = transaction.state.doc.length;
-				let insideCallout = false;
-				let calloutType = "";
-				let calloutText = "";
-				let calloutFrom = 0;
 				for (let cursor = doc.iterRange(from, to), pos = from, m; !cursor.next().done; pos += cursor.value.length) {
 					// console.log(pos);
 					// console.log(cursor.value);
 					if (!cursor.lineBreak) {
 						if(cursor.value[0] != '{') { //not a shortcode line
-							if(insideCallout)
-							{
-								calloutText += cursor.value;
-							}
 							continue;
 						}
 						//tag
 						while(m = tagRegex.exec(cursor.value)){
 							const tag = m[1];
 							const name = m[2];
-							if (editorInfo.file) {
-								const file = plugin.app.metadataCache.getFirstLinkpathDest(name, editorInfo.file.path);
-								if (file) {
-									const path = plugin.app.vault.getResourcePath(file) + '?' + file.stat.mtime;
-									builder.add(pos + m.index, pos + m.index + m[0].length, Decoration.replace({ widget: new TagWidget(tag, path, file.path) }))
-								}
+							const tagFrom = pos + m.index;
+							const tagTo = pos + m.index + m[0].length;
+								if (editorInfo.file) {
+									const file = plugin.app.metadataCache.getFirstLinkpathDest(name, editorInfo.file.path);
+									if (file) {
+										const path = plugin.app.vault.getResourcePath(file) + '?' + file.stat.mtime;
+										if (selection.from < tagFrom || selection.to > tagTo) { //not selected
+											builder.add(tagFrom, tagTo, Decoration.replace({ widget: new TagWidget(tag, path, file.path) }))
+										}
+										else {
+											builder.add(tagTo, tagTo, Decoration.widget({ widget: new TagWidget(tag, path, file.path) }))
+										}
+									}
 							}
 						}
-						//callout start
-						while(m = calloutStartRegex.exec(cursor.value)){
-							insideCallout = true;
-							calloutType = m[1];
-							calloutFrom = pos + m.index;
-						}
-						//callout end
-						while(m = calloutEndRegex.exec(cursor.value)){
-							if(insideCallout){
-								var content = document.createElement('div')
+						while(m = calloutRegex.exec(cursor.value)){
+							const type = m[1];
+							const text = m[2];
+							const calloutFrom = pos + m.index;
+							const calloutTo = pos + m.index + m[0].length;
+							if (selection.from < calloutFrom || selection.to > calloutTo) { //not selected
+								var content = document.createElement('span')
 								MarkdownRenderer.render(
 									this.app,
-									calloutText,
+									text,
 									content,
 									editorInfo.file?.path ?? "",
 									new Component(),
 								);
-								builder.add(calloutFrom, pos + m.index + m[0].length, Decoration.replace({ widget: new CalloutWidget(calloutType, content), block: true}))
-								insideCallout = false;
-								calloutType = "";
-								calloutText = "";
-								calloutFrom = 0;
+								builder.add(calloutFrom, calloutTo, Decoration.replace({ widget: new CalloutWidget(type, content)}))
 							}
 						}
 					}
