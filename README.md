@@ -9,8 +9,6 @@ This plugin makes zola shortcodes render in Live Preview, switch to Source Mode 
 
 ## Callouts 
 ```
-{% callout(t="info") %}
-Callout Text
-{% end %} 
+{% info() %}Callout Text{% end %} 
 ```
 Renders as a obsidian callout (works for info, tip, warning, danger)
