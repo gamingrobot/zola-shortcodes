@@ -65,7 +65,7 @@ class CalloutWidget extends WidgetType {
 }
 
 const tagRegex = /{{\s*(img|video)\(src="([\/\.\w-]+)".*}}/g;
-const calloutStartRegex = /^{%\s*(info|tip|warning|danger)\(\)\s*%}$/g
+const calloutStartRegex = /^{%\s*callout\(type="(info|tip|warn|danger)"\)\s*%}$/g
 const calloutEndRegex = /^{%\s*end\s*%}$/g
 
 function createStateField(plugin: ShortCodePlugin): StateField<DecorationSet> {
