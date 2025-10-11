@@ -172,10 +172,10 @@ export default class ShortCodePlugin extends Plugin {
 				);
 
 				if(file.type.startsWith("image/")){
-					editor.replaceSelection('{{ img(src="'+ newFile.path +'", alt="" link="") }} \n')
+					editor.replaceSelection('{{ img(src="'+ newFile.path +'", alt="" link="") }}\n')
 				}
 				else if(file.type.startsWith("video/")){
-					editor.replaceSelection('{{ video(src="'+ newFile.path +'") }} \n')
+					editor.replaceSelection('{{ video(src="'+ newFile.path +'") }}\n')
 				}
 			}
 		}
