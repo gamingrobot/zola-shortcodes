@@ -1,4 +1,4 @@
-import { Plugin, MarkdownRenderer, Component, editorLivePreviewField, editorInfoField } from 'obsidian';
+import { App, Plugin, MarkdownRenderer, Component, Editor, PluginSettingTab, Setting, editorLivePreviewField, editorInfoField } from 'obsidian';
 import {
 	Extension,
 	RangeSetBuilder,
@@ -65,7 +65,7 @@ class CalloutWidget extends WidgetType {
 	}
 }
 
-const tagRegex = /{{\s*(img|video)\(src="([\/\.\w-]+)".*}}/g;
+const tagRegex = /{{\s*(img|video)\(src="([\/\.\w\- ]+)".*}}/g;
 const calloutRegex = /^{%\s*(info|tip|warning|danger)\(\)\s*%}(.*){%\s*end\s*%}$/g
 
 function createStateField(plugin: ShortCodePlugin): StateField<DecorationSet> {
@@ -137,12 +137,96 @@ function createStateField(plugin: ShortCodePlugin): StateField<DecorationSet> {
 	});
 }
 
+interface ShortCodePluginSettings {
+	convertOnPaste: boolean;
+}
+
+const DEFAULT_SETTINGS: ShortCodePluginSettings = {
+	convertOnPaste: true
+}
+
 export default class ShortCodePlugin extends Plugin {
+	settings: ShortCodePluginSettings;
+
+	pasteHandler = async (evt: ClipboardEvent, editor: Editor) => {
+		if (evt.defaultPrevented) return;
+		if (!this.settings.convertOnPaste) return;
+		if (evt.clipboardData === null) return;
+
+		const clipboardData = evt.clipboardData;
+		const files = clipboardData.files;
+		//console.log(files);
+
+		const imagesOrVideos = Array.from(files).every((file) => file.type.startsWith("image/") || file.type.startsWith("video/"));
+        if (!imagesOrVideos) return;
+
+		evt.preventDefault();
+
+		for(let i = 0;i<files.length;i++){
+			const file = files[i];
+			if(file.type.startsWith("image/") || file.type.startsWith("video/")){
+				const targetPath = await this.app.fileManager.getAvailablePathForAttachment(file.name);
+				const newFile = await this.app.vault.createBinary(
+					targetPath,
+					await file.arrayBuffer()
+				);
+
+				if(file.type.startsWith("image/")){
+					editor.replaceSelection('{{ img(src="'+ newFile.path +'", alt="" link="") }} \n')
+				}
+				else if(file.type.startsWith("video/")){
+					editor.replaceSelection('{{ video(src="'+ newFile.path +'") }} \n')
+				}
+			}
+		}
+	}
+
+
 	async onload() {
+		await this.loadSettings();
+
+		this.addSettingTab(new ShortCodePluginSettingsTab(this.app, this));
 		this.registerEditorExtension(createStateField(this));
+		this.app.workspace.on("editor-paste", this.pasteHandler);
 	}
 
 	onunload() {
+		this.app.workspace.off("editor-paste", this.pasteHandler);
+	}
 
+		async loadSettings() {
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	}
+
+	async saveSettings() {
+		await this.saveData(this.settings);
+	}
+
+}
+
+
+class ShortCodePluginSettingsTab extends PluginSettingTab {
+	plugin: ShortCodePlugin;
+
+	constructor(app: App, plugin: ShortCodePlugin) {
+		super(app, plugin);
+		this.plugin = plugin;
+	}
+
+	display(): void {
+		const {containerEl} = this;
+
+		containerEl.empty();
+
+		new Setting(containerEl)
+			.setName('Convert on Paste')
+			.setDesc('Convert images and videos on paste into zola shortcodes')
+			.addToggle(c => c
+				.setValue(this.plugin.settings.convertOnPaste)
+				.onChange(async (value) => {
+					this.plugin.settings.convertOnPaste = value;
+					await this.plugin.saveSettings();
+				})
+			)
 	}
 }
