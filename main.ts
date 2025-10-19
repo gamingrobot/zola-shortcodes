@@ -155,7 +155,8 @@ export default class ShortCodePlugin extends Plugin {
 
 		const clipboardData = evt.clipboardData;
 		const files = clipboardData.files;
-		//console.log(files);
+
+		if(files.length == 0) return;
 
 		const imagesOrVideos = Array.from(files).every((file) => file.type.startsWith("image/") || file.type.startsWith("video/"));
         if (!imagesOrVideos) return;
